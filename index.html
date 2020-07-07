@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>CRUD CON VUE.JS + PHP + MYSQL</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.11/vue.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="main.css">
+</head>
+<body>
+<div id="app">
+  <div class="contenedor">
+    <div class="alert alert-primary alert-dismissible fade show" role="alert" v-if="mensaje">
+      <strong>{{mensaje}}</strong>
+    </div>
+    <table class="table">
+      <thead class="thead-dark">
+        <tr>
+          <th scope="col">ID</th>
+          <th scope="col">NOMBRE</th>
+          <th scope="col">RAZA</th>
+          <th scope="col">IMAGEN</th>
+          <th><button type="button" class="btn btn-success" @click="nuevoUsuario=true">NUEVO</button></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="personaje in personajes" :key="personaje.id">
+          <th scope="row">{{personaje.ID}}</th>
+          <td>{{personaje.NOMBRE}}</td>
+          <td>{{personaje.RAZA}}</td>
+          <td><img :src="'img/'+personaje.FOTO" width="50px"></td>
+          <td>
+            <button type="button" class="btn btn-warning" @click="editarUsuario=true;elegirPersonaje(personaje)">EDITAR</button>
+            <button type="button" class="btn btn-danger" @click="eliminarUsuario=true;elegirPersonaje(personaje)">ELIMINAR</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- Modal NUEVO USUARIO -->
+    <div class="modal" v-if="nuevoUsuario">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Bienvenido al mundo de Dragon Ball!!!</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close" @click="nuevoUsuario=false">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Completa los campos para crear los usuarios</p>
+            NOMBRE: <input type="text" class="form-control" name="nombre" id="nombre" placeholder="Nombre">
+            <br>
+            RAZA: <input type="text" class="form-control" name="raza" id="raza" placeholder="Raza">
+            <br>
+            <img v-if="url" :src="url" width="150px">
+            IMAGEN: <input type="file" ref="FOTO" name="foto" id="foto" v-on:change="verImagen()">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="nuevoUsuario=false">CERRAR</button>
+            <button type="button" class="btn btn-primary" @click="nuevoUsuario=false;insertarPersonajeDG()">GUARDAR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Modal EDITAR USUARIO -->
+    <div class="modal" v-if="editarUsuario">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">EDITAR PERSONAJES</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close" @click="editarUsuario=false">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Completa los campos para editar al personaje</p>
+            NOMBRE: <input type="text" class="form-control" name="enombre" id="enombre" v-model="elegido.NOMBRE" placeholder="Nombre">
+            <br>
+            RAZA: <input type="text" class="form-control" name="eraza" id="eraza" v-model="elegido.RAZA" placeholder="Raza">
+            <br>
+            <div v-if="eurl">
+              <img :src="eurl" width="150px">
+            </div>
+            <div v-else="eurl">
+              <img :src="'img/'+elegido.FOTO" width="150px">
+            </div>
+            IMAGEN: <input type="file" ref="FOTO" name="efoto" id="efoto" v-on:change="everImagen()">
+            <input type="hidden" name="eid" id="eid" v-model="elegido.ID">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="editarUsuario=false;">CERRAR</button>
+            <button type="button" class="btn btn-primary" @click="editarUsuario=false;editarPersonajeDG()">EDITAR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Modal ELIMINAR USUARIO -->
+    <div class="modal" v-if="eliminarUsuario">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Bienvenido al mundo de Dragon Ball!!!</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close" @click="eliminarUsuario=false">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>¿Estas seguro de que quieres eliminar al personaje <b>{{elegido.NOMBRE}}</b>?</p>
+            <input type="hidden" name="did" id="did" v-model="elegido.ID">
+            <button @click="eliminarUsuario=false;eliminarPersonajeDG();" type="button" class="btn btn-success">SI</button>
+            <button @click="eliminarUsuario=false;" type="button" class="btn btn-secondary">NO</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+<script>
+  var app = new Vue({
+    el:"#app",
+    data: {
+        nuevoUsuario: false,
+        editarUsuario: false,
+        eliminarUsuario: false,
+        personajes:[],
+        elegido:{},
+        url: null,
+        eurl: null,
+        mensaje: ""
+    },
+    mounted:function() {
+      this.mostrarPersonajeDG()
+    },
+    methods:{
+      mostrarPersonajeDG:function() {
+        axios.get("http://localhost/practicas/vuejs/api.php?accion=mostrar")
+        .then(function(response) {
+          app.personajes = response.data.personajes;
+          console.log(response);
+        })
+      },
+      verImagen:function() {
+        var _this = this
+        _this.file = this.$refs.FOTO.files[0];
+        _this.url = URL.createObjectURL(_this.file);
+      },
+      everImagen:function() {
+        var _this = this
+        _this.file = this.$refs.EFOTO.files[0];
+        _this.url = URL.createObjectURL(_this.file);
+      },
+      insertarPersonajeDG:function() {
+        let formdata = new FormData()
+        formdata.append("NOMBRE",document.getElementById("nombre").value)
+        formdata.append("RAZA",document.getElementById("raza").value)
+        formdata.append("FOTO",document.getElementById("foto").files[0])
+        axios.post("http://localhost/practicas/vuejs/api.php?accion=insertar", formdata)
+        .then(function(response) {
+          console.log(response)
+          app.mensaje = response.data.mensaje
+          app.mostrarPersonajeDG()
+        })
+      },
+      editarPersonajeDG:function() {
+        let formdata = new FormData()
+        formdata.append("EID",document.getElementById("eid").value)
+        formdata.append("ENOMBRE",document.getElementById("enombre").value)
+        formdata.append("ERAZA",document.getElementById("eraza").value)
+        formdata.append("EFOTO",document.getElementById("efoto").files[0])
+        axios.post("http://localhost/practicas/vuejs/api.php?accion=editar", formdata)
+        .then(function(response) {
+          console.log(response);
+          app.mensaje = response.data.mensaje
+          app.mostrarPersonajeDG()
+        })
+      },
+      eliminarPersonajeDG:function() {
+        let formdata = new FormData()
+        formdata.append("did",document.getElementById("did").value)
+
+        axios.post("http://localhost/practicas/vuejs/api.php?accion=eliminar", formdata)
+        .then(function(response) {
+          console.log(response);
+          app.mensaje = response.data.mensaje
+          app.mostrarPersonajeDG()
+        })
+      },
+      elegirPersonaje(personaje){
+        app.elegido = personaje
+      }
+    }
+  });
+</script>
